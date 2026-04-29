@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07070f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Schengen">
+<link rel="manifest" href="manifest.json">
+<title>Schengen Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:     #07070f;
+    --surf:   #0d0d1e;
+    --b1:     #191932;
+    --b2:     #242448;
+    --muted:  #46467a;
+    --txt:    #b8b8d8;
+    --hi:     #e0e0ff;
+    --acc:    #7c6ff7;
+    --accL:   #a89cf7;
+    --green:  #34d399;
+    --amber:  #fbbf24;
+    --red:    #f87171;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--txt);
+    font-family: 'DM Mono', 'Fira Code', monospace;
+    display: flex; flex-direction: column;
+  }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: #0a0a18; }
+  ::-webkit-scrollbar-thumb { background: #2a2a50; border-radius: 2px; }
+
+  /* ── HEADER ── */
+  #header {
+    background: linear-gradient(160deg, #08081a, #0c0c1f);
+    border-bottom: 1px solid var(--b1);
+    padding: calc(var(--safe-top) + 14px) 16px 0;
+    flex-shrink: 0;
+  }
+  #header-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+  #header-top .logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; }
+  #header-top .logo-a { color: var(--acc); }
+  #header-top .logo-b { color: var(--hi); }
+  #header-top .today-label { margin-left: auto; font-size: 10px; color: var(--muted); }
+  #header-sub { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; margin-bottom: 12px; }
+  #tabs { display: flex; align-items: flex-end; justify-content: space-between; }
+  #tab-list { display: flex; gap: 2px; }
+  .tab {
+    cursor: pointer; padding: 8px 14px;
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); border-bottom: 2px solid transparent;
+    transition: all .15s; user-select: none;
+  }
+  .tab:hover { color: var(--txt); }
+  .tab.on { color: var(--accL); border-color: var(--acc); }
+  #add-btn {
+    margin-bottom: 10px;
+    background: var(--acc); border: none; color: #fff;
+    padding: 6px 13px; border-radius: 4px; cursor: pointer;
+    font-size: 10px; letter-spacing: 1.5px; font-family: inherit;
+    transition: background .15s;
+  }
+  #add-btn:hover { background: #6a5ee0; }
+
+  /* ── CONTENT ── */
+  #content {
+    flex: 1; overflow-y: auto;
+    padding: 20px 16px calc(var(--safe-bot) + 20px);
+  }
+
+  /* ── PANELS ── */
+  .panel { display: none; animation: fu .18s ease; }
+  .panel.on { display: block; }
+  @keyframes fu { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── GAUGE ── */
+  #gauge-wrap { text-align: center; margin-bottom: 20px; }
+  #gauge-wrap svg { overflow: visible; }
+  #gauge-val {
+    font-family: 'Bebas Neue', sans-serif; font-size: 44px; line-height: 1;
+    transition: color .5s;
+  }
+  #gauge-sub { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-top: 1px; }
+
+  /* ── STATS ROW ── */
+  .stats { display: flex; gap: 8px; margin-bottom: 16px; }
+  .stat {
+    background: var(--surf); border: 1px solid var(--b1); border-radius: 6px;
+    padding: 12px 6px; text-align: center; flex: 1;
+  }
+  .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; }
+  .stat-lbl { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-top: 3px; }
+
+  /* ── PROGRESS BAR ── */
+  .bar-wrap { margin-bottom: 20px; }
+  .bar-track {
+    height: 5px; background: var(--b1); border-radius: 3px;
+    overflow: hidden; position: relative;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--acc), var(--green));
+    transition: width .8s ease, background .5s;
+  }
+  .bar-marker {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+  }
+  .bar-labels {
+    display: flex; justify-content: space-between;
+    margin-top: 4px; font-size: 9px; color: var(--muted);
+  }
+
+  /* ── INFO CARD ── */
+  .card {
+    background: var(--surf); border: 1px solid var(--b1); border-radius: 6px;
+    padding: 12px 14px; margin-bottom: 12px;
+  }
+  .card-row { display: flex; justify-content: space-between; align-items: center; }
+  .card-lbl { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 3px; }
+  .card-val { font-size: 12px; color: var(--txt); }
+  .card-val-big { font-family: 'Bebas Neue', sans-serif; font-size: 22px; }
+
+  /* ── ROLLING OFF ── */
+  .section-lbl { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 10px; }
+  .rolloff-item {
+    background: var(--surf); border: 1px solid var(--b1); border-radius: 4px;
+    padding: 10px 13px; margin-bottom: 6px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .rolloff-name { font-size: 12px; color: var(--hi); }
+  .rolloff-sub  { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .rolloff-free { font-size: 13px; color: var(--green); }
+  .rolloff-when { font-size: 10px; color: var(--muted); }
+
+  /* ── PILL ── */
+  .pill {
+    display: inline-block; font-size: 9px; letter-spacing: 1.5px;
+    padding: 2px 7px; border-radius: 2px; text-transform: uppercase;
+  }
+
+  /* ── TRIP LIST ── */
+  #trip-count { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 12px; }
+  .trip-row {
+    background: var(--surf); border: 1px solid var(--b2); border-radius: 6px;
+    padding: 11px 13px; margin-bottom: 7px;
+    display: flex; align-items: center; gap: 10px;
+    transition: background .1s;
+  }
+  .trip-row:hover { background: #0f0f20; }
+  .trip-row.faded { opacity: 0.38; border-color: var(--b1); }
+  .trip-info { flex: 1; }
+  .trip-name { font-size: 13px; color: var(--hi); display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+  .trip-dates { font-size: 10px; color: var(--muted); }
+  .trip-days { text-align: right; margin-right: 6px; }
+  .trip-days-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; line-height: 1; color: var(--accL); }
+  .trip-days-lbl { font-size: 9px; color: var(--muted); }
+  .trip-row.faded .trip-days-val { color: var(--muted); }
+  .icon-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 14px; color: var(--muted); padding: 4px;
+    transition: color .15s; line-height: 1;
+  }
+  .icon-btn.edit:hover { color: var(--accL); }
+  .icon-btn.del:hover  { color: var(--red); }
+
+  /* ── FORM ── */
+  #trip-form {
+    background: var(--surf); border: 1px solid var(--b2);
+    border-radius: 6px; padding: 16px; margin-bottom: 18px;
+    animation: fu .18s ease;
+  }
+  .form-title { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 14px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .field-lbl { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 5px; }
+  .field-inp {
+    width: 100%; background: #050510; border: 1px solid var(--b2);
+    color: var(--txt); padding: 9px 10px; border-radius: 4px;
+    font-size: 12px; font-family: inherit; outline: none;
+    transition: border-color .15s; color-scheme: dark;
+  }
+  .field-inp:focus { border-color: var(--acc); }
+  .form-btns { display: flex; gap: 8px; }
+  .btn-save {
+    background: var(--acc); border: none; color: #fff;
+    padding: 8px 18px; border-radius: 4px; cursor: pointer;
+    font-size: 10px; letter-spacing: 1.5px; font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-save:hover { background: #6a5ee0; }
+  .btn-cancel {
+    background: none; border: 1px solid var(--b2); color: var(--muted);
+    padding: 8px 14px; border-radius: 4px; cursor: pointer;
+    font-size: 10px; letter-spacing: 1.5px; font-family: inherit;
+    transition: all .15s;
+  }
+  .btn-cancel:hover { color: var(--txt); border-color: var(--muted); }
+
+  /* ── PLANNER ── */
+  .planner-lbl { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 18px; }
+  .proj-result {
+    background: var(--surf); border: 1px solid var(--b2);
+    border-radius: 6px; padding: 20px; text-align: center; margin-bottom: 18px;
+    animation: fu .18s ease;
+  }
+  .proj-big { font-family: 'Bebas Neue', sans-serif; font-size: 56px; line-height: 1; }
+  .proj-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .proj-tip {
+    margin-top: 12px; padding: 10px 13px; border-radius: 4px;
+    font-size: 11px; line-height: 1.5;
+  }
+  .week-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .week-lbl { font-size: 10px; color: var(--muted); width: 58px; flex-shrink: 0; }
+  .week-lbl.now { color: var(--accL); }
+  .week-bar { flex: 1; height: 5px; background: var(--b1); border-radius: 3px; overflow: hidden; position: relative; }
+  .week-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+  .week-num { font-size: 11px; width: 24px; text-align: right; flex-shrink: 0; }
+  .week-max { font-size: 9px; color: var(--muted); flex-shrink: 0; }
+
+  /* ── BACKUP TAB ── */
+  .backup-section { margin-bottom: 24px; }
+  .backup-title { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 10px; }
+  .backup-desc { font-size: 11px; color: var(--txt); line-height: 1.6; margin-bottom: 12px; }
+  .backup-btn {
+    display: block; width: 100%; background: var(--surf);
+    border: 1px solid var(--b2); color: var(--txt);
+    padding: 12px 14px; border-radius: 5px; cursor: pointer;
+    font-size: 11px; font-family: inherit; text-align: left;
+    transition: all .15s; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .backup-btn:hover { background: #111128; border-color: var(--acc); color: var(--hi); }
+  .backup-btn .bico { font-size: 18px; }
+  .backup-btn .btxt { flex: 1; }
+  .backup-btn .btitle { font-size: 12px; color: var(--hi); margin-bottom: 2px; }
+  .backup-btn .bsub { font-size: 10px; color: var(--muted); }
+  .backup-btn:hover .btitle { color: var(--accL); }
+  .backup-btn:hover .bsub { color: var(--txt); }
+  #import-area {
+    width: 100%; min-height: 80px; background: #050510;
+    border: 1px solid var(--b2); color: var(--txt);
+    padding: 10px; border-radius: 4px; font-size: 11px;
+    font-family: inherit; outline: none; resize: vertical;
+    transition: border-color .15s; margin-bottom: 8px;
+  }
+  #import-area:focus { border-color: var(--acc); }
+  #import-result { font-size: 11px; min-height: 18px; }
+  .success { color: var(--green); }
+  .error   { color: var(--red); }
+  .warn    { color: var(--amber); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: calc(var(--safe-bot) + 16px); left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1a1a38; border: 1px solid var(--b2);
+    color: var(--hi); padding: 9px 18px; border-radius: 20px;
+    font-size: 11px; letter-spacing: .5px;
+    opacity: 0; transition: all .25s; pointer-events: none; white-space: nowrap;
+    z-index: 999;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="header-top">
+    <div class="logo"><span class="logo-a">SCHENGEN</span> <span class="logo-b">TRACKER</span></div>
+    <div class="today-label" id="today-label"></div>
+  </div>
+  <div id="header-sub">90 DAYS IN ANY ROLLING 180-DAY WINDOW · UK PASSPORT</div>
+  <div id="tabs">
+    <div id="tab-list">
+      <div class="tab on" data-tab="dashboard">Dashboard</div>
+      <div class="tab" data-tab="trips">Trips</div>
+      <div class="tab" data-tab="planner">Planner</div>
+      <div class="tab" data-tab="backup">Backup</div>
+    </div>
+    <button id="add-btn">+ Add Trip</button>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+
+  <!-- ══ DASHBOARD ══ -->
+  <div class="panel on" id="panel-dashboard">
+    <div id="gauge-wrap">
+      <svg id="gauge-svg" width="190" height="106" viewBox="0 0 190 106">
+        <path id="gauge-bg"   d="M14 98 A81 81 0 0 1 176 98" fill="none" stroke="#191932" stroke-width="13" stroke-linecap="round"/>
+        <path id="gauge-fill" d="M14 98 A81 81 0 0 1 176 98" fill="none" stroke="#34d399" stroke-width="13" stroke-linecap="round" style="transition:all .8s ease"/>
+        <line id="mark-70" x1="0" y1="0" x2="0" y2="0" stroke="#fbbf24" stroke-width="2" opacity="0.6"/>
+        <line id="mark-85" x1="0" y1="0" x2="0" y2="0" stroke="#f87171" stroke-width="2" opacity="0.6"/>
+      </svg>
+      <div id="gauge-val">0</div>
+      <div id="gauge-sub">DAYS USED</div>
+      <div style="margin-top:8px" id="status-pill"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="stat-used">0</div><div class="stat-lbl">USED</div></div>
+      <div class="stat"><div class="stat-val" id="stat-left">90</div><div class="stat-lbl">LEFT</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--acc)">90</div><div class="stat-lbl">LIMIT</div></div>
+    </div>
+
+    <div class="bar-wrap">
+      <div class="bar-track">
+        <div class="bar-marker" id="bar-m70" style="left:77.8%;background:rgba(251,191,36,.5)"></div>
+        <div class="bar-marker" id="bar-m85" style="left:94.4%;background:rgba(248,113,113,.5)"></div>
+        <div class="bar-fill" id="bar-fill" style="width:0%"></div>
+      </div>
+      <div class="bar-labels"><span>0</span><span style="color:var(--amber)">70</span><span style="color:var(--red)">85</span><span>90</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-row">
+        <div>
+          <div class="card-lbl">CURRENT 180-DAY WINDOW</div>
+          <div class="card-val" id="window-range"></div>
+        </div>
+        <div style="text-align:right">
+          <div class="card-lbl">DAYS LEFT</div>
+          <div class="card-val-big" id="card-left"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="rolloff-section" style="display:none">
+      <div class="section-lbl">CAPACITY FREEING UP SOON</div>
+      <div id="rolloff-list"></div>
+    </div>
+  </div>
+
+  <!-- ══ TRIPS ══ -->
+  <div class="panel" id="panel-trips">
+    <div id="trip-form" style="display:none">
+      <div class="form-title" id="form-title">NEW TRIP</div>
+      <div class="form-grid">
+        <div class="full">
+          <div class="field-lbl">LOCATION / LABEL</div>
+          <input class="field-inp" id="f-label" placeholder="e.g. Paris, France" autocomplete="off">
+        </div>
+        <div>
+          <div class="field-lbl">ENTRY DATE</div>
+          <input class="field-inp" id="f-enter" type="date">
+        </div>
+        <div>
+          <div class="field-lbl">EXIT DATE (BLANK = ONGOING)</div>
+          <input class="field-inp" id="f-exit" type="date">
+        </div>
+      </div>
+      <div class="form-btns">
+        <button class="btn-save" id="btn-save">SAVE</button>
+        <button class="btn-cancel" id="btn-cancel">CANCEL</button>
+      </div>
+    </div>
+    <div id="trip-count"></div>
+    <div id="trip-list"></div>
+  </div>
+
+  <!-- ══ PLANNER ══ -->
+  <div class="panel" id="panel-planner">
+    <div class="planner-lbl">PROJECT YOUR SCHENGEN USAGE ON ANY DATE</div>
+    <div class="full" style="margin-bottom:16px">
+      <div class="field-lbl">SELECT DATE</div>
+      <input class="field-inp" id="proj-date" type="date" style="max-width:220px">
+    </div>
+    <div id="proj-result" style="display:none"></div>
+    <div class="section-lbl" style="margin-top:8px">ROLLING CAPACITY — NEXT 14 WEEKS</div>
+    <div id="week-chart"></div>
+  </div>
+
+  <!-- ══ BACKUP ══ -->
+  <div class="panel" id="panel-backup">
+
+    <div class="backup-section">
+      <div class="backup-title">EXPORT</div>
+      <div class="backup-desc">Export your trip data to keep a safe copy. The CSV opens directly in Google Sheets or Excel.</div>
+      <button class="backup-btn" id="btn-export-csv">
+        <span class="bico">📊</span>
+        <div class="btxt">
+          <div class="btitle">Download as CSV</div>
+          <div class="bsub">Opens in Google Sheets · Excel · Numbers</div>
+        </div>
+      </button>
+      <button class="backup-btn" id="btn-export-json">
+        <span class="bico">💾</span>
+        <div class="btxt">
+          <div class="btitle">Download as JSON</div>
+          <div class="bsub">Full backup · can be reimported exactly</div>
+        </div>
+      </button>
+    </div>
+
+    <div class="backup-section">
+      <div class="backup-title">IMPORT</div>
+      <div class="backup-desc">Paste JSON from a previous export to restore your data. This will replace all current trips.</div>
+      <textarea id="import-area" placeholder='Paste JSON here, e.g. [{"id":1,"label":"Paris","enter":"2025-01-01","exit":"2025-01-10"},...]'></textarea>
+      <button class="backup-btn" id="btn-import-json">
+        <span class="bico">📥</span>
+        <div class="btxt">
+          <div class="btitle">Import from JSON</div>
+          <div class="bsub">Replaces all current trip data</div>
+        </div>
+      </button>
+      <div id="import-result"></div>
+    </div>
+
+    <div class="backup-section">
+      <div class="backup-title">INSTALL AS APP</div>
+      <div class="backup-desc">On Android: open this file in Chrome, tap the menu (⋮) and select <strong style="color:var(--hi)">Add to Home Screen</strong>. It will install as a full-screen app.<br><br>On iOS Safari: tap the Share button then <strong style="color:var(--hi)">Add to Home Screen</strong>.</div>
+      <div id="install-btn-wrap"></div>
+    </div>
+
+    <div class="backup-section">
+      <div class="backup-title">STORAGE INFO</div>
+      <div class="backup-desc" id="storage-info">Data is saved in your browser's local storage. Export regularly as a backup in case you clear your browser cache.</div>
+    </div>
+
+  </div>
+
+</div><!-- /content -->
+
+<div id="toast"></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const SEED = [
+  {id:1,  label:"Hungary / EU",  enter:"2025-01-11", exit:"2025-03-04"},
+  {id:2,  label:"Netherlands",   enter:"2025-04-13", exit:"2025-05-11"},
+  {id:3,  label:"Lisbon",        enter:"2025-06-01", exit:"2025-06-06"},
+  {id:4,  label:"Denmark",       enter:"2025-06-08", exit:"2025-06-29"},
+  {id:5,  label:"Barcelona",     enter:"2025-08-01", exit:"2025-08-03"},
+  {id:6,  label:"Schengen",      enter:"2025-08-23", exit:"2025-09-20"},
+  {id:7,  label:"Schengen",      enter:"2025-10-12", exit:"2025-10-26"},
+  {id:8,  label:"Schengen",      enter:"2025-10-30", exit:"2025-11-02"},
+  {id:9,  label:"Schengen",      enter:"2025-12-05", exit:"2025-12-20"},
+  {id:10, label:"Schengen",      enter:"2026-02-08", exit:"2026-02-28"},
+];
+
+const KEY = 'schengen_pwa_v1';
+let trips = [];
+let nextId = 11;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      trips = data.trips || SEED;
+      nextId = data.nextId || (Math.max(...trips.map(t=>t.id)) + 1);
+    } else {
+      trips = JSON.parse(JSON.stringify(SEED));
+    }
+  } catch { trips = JSON.parse(JSON.stringify(SEED)); }
+}
+
+function save() {
+  localStorage.setItem(KEY, JSON.stringify({trips, nextId}));
+}
+
+// ── DATE HELPERS ─────────────────────────────────────────────────────────────
+function toDate(s)  { return new Date(s + 'T00:00:00'); }
+function today()    { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function dStr(d)    { return d.toISOString().slice(0,10); }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function diffDays(a,b){ return Math.round((b-a)/86400000); }
+
+function fmt(d) {
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function fmtS(d) {
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+}
+
+function computeUsed(tripsArr, ref) {
+  const ws = addDays(ref, -179);
+  let n = 0;
+  for (const t of tripsArr) {
+    if (!t.enter) continue;
+    const en = toDate(t.enter);
+    const ex = t.exit ? toDate(t.exit) : ref;
+    const s = en < ws  ? ws  : en;
+    const e = ex > ref ? ref : ex;
+    if (e >= s) n += diffDays(s, e) + 1;
+  }
+  return n;
+}
+
+function statusColor(u) {
+  return u >= 85 ? 'var(--red)' : u >= 70 ? 'var(--amber)' : 'var(--green)';
+}
+function statusLabel(u) {
+  return u >= 90 ? 'LIMIT REACHED' : u >= 85 ? 'CRITICAL' : u >= 70 ? 'CAUTION' : 'CLEAR';
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  const now = today();
+  const winS = addDays(now, -179);
+  const used = computeUsed(trips, now);
+  const left = Math.max(0, 90 - used);
+  const pct  = Math.min((used / 90) * 100, 100);
+  const clr  = statusColor(used);
+
+  // Header date
+  document.getElementById('today-label').textContent = fmt(now);
+
+  // Gauge
+  const cx=95, cy=98, r=81;
+  const gFill = document.getElementById('gauge-fill');
+  if (pct <= 0) {
+    gFill.setAttribute('d', `M14 98 A81 81 0 0 1 14.01 98`);
+  } else {
+    const angle = Math.PI - (pct/100) * Math.PI;
+    const ex2 = cx + r * Math.cos(angle);
+    const ey2 = cy - r * Math.sin(angle);
+    const large = pct > 50 ? 1 : 0;
+    gFill.setAttribute('d', `M14 98 A${r} ${r} 0 ${large} 1 ${ex2.toFixed(2)} ${ey2.toFixed(2)}`);
+  }
+  gFill.setAttribute('stroke', clr.replace('var(','').replace(')','').replace('--red','#f87171').replace('--amber','#fbbf24').replace('--green','#34d399').replace('--acc','#7c6ff7'));
+  // fix color properly
+  const colMap = {'var(--red)':'#f87171','var(--amber)':'#fbbf24','var(--green)':'#34d399','var(--acc)':'#7c6ff7'};
+  gFill.setAttribute('stroke', colMap[clr] || '#34d399');
+
+  // Zone markers
+  function markerPos(v) {
+    const a = Math.PI - (v/90) * Math.PI;
+    return { x1: cx+73*Math.cos(a), y1: cy-73*Math.sin(a), x2: cx+65*Math.cos(a), y2: cy-65*Math.sin(a) };
+  }
+  ['70','85'].forEach((v,i) => {
+    const p = markerPos(+v);
+    const el = document.getElementById(`mark-${v}`);
+    el.setAttribute('x1', p.x1); el.setAttribute('y1', p.y1);
+    el.setAttribute('x2', p.x2); el.setAttribute('y2', p.y2);
+  });
+
+  document.getElementById('gauge-val').textContent = used;
+  document.getElementById('gauge-val').style.color = colMap[clr] || '#34d399';
+  document.getElementById('status-pill').innerHTML =
+    `<span class="pill" style="background:${colMap[clr]}18;border:1px solid ${colMap[clr]}44;color:${colMap[clr]}">${statusLabel(used)}</span>`;
+
+  // Stats
+  document.getElementById('stat-used').textContent = used;
+  document.getElementById('stat-used').style.color = colMap[clr];
+  document.getElementById('stat-left').textContent = left;
+  document.getElementById('stat-left').style.color = left<=10?'#f87171':left<=20?'#fbbf24':'#34d399';
+
+  // Bar
+  document.getElementById('bar-fill').style.width = pct + '%';
+  document.getElementById('bar-fill').style.background = `linear-gradient(90deg,#7c6ff7,${colMap[clr]})`;
+
+  // Window
+  document.getElementById('window-range').textContent = `${fmt(winS)} → ${fmt(now)}`;
+  document.getElementById('card-left').textContent = left;
+  document.getElementById('card-left').style.color = colMap[clr];
+
+  // Rolling off
+  const rolling = trips.flatMap(t => {
+    if (!t.exit) return [];
+    const en = toDate(t.enter);
+    if (en < winS) return [];
+    const ro = addDays(en, 180);
+    const until = diffDays(now, ro);
+    if (until < 0 || until > 90) return [];
+    const ex = toDate(t.exit);
+    const s = en<winS?winS:en, e = ex>now?now:ex;
+    const dw = e>=s ? diffDays(s,e)+1 : 0;
+    return [{...t, ro, until, dw}];
+  }).sort((a,b)=>a.until-b.until);
+
+  const rsec = document.getElementById('rolloff-section');
+  if (rolling.length) {
+    rsec.style.display = '';
+    document.getElementById('rolloff-list').innerHTML = rolling.map(t => `
+      <div class="rolloff-item">
+        <div>
+          <div class="rolloff-name">${esc(t.label||'Schengen')}</div>
+          <div class="rolloff-sub">entered ${fmt(toDate(t.enter))}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="rolloff-free">+${t.dw}d free</div>
+          <div class="rolloff-when">in ${t.until}d · ${fmtS(t.ro)}</div>
+        </div>
+      </div>`).join('');
+  } else {
+    rsec.style.display = 'none';
+  }
+
+  // Trip list
+  const sorted = trips.slice().sort((a,b)=>toDate(a.enter)-toDate(b.enter));
+  document.getElementById('trip-count').textContent = `${trips.length} TRIP${trips.length!==1?'S':''} RECORDED`;
+  document.getElementById('trip-list').innerHTML = sorted.map(t => {
+    const en = toDate(t.enter);
+    const ex = t.exit ? toDate(t.exit) : null;
+    const inWin = (ex||now) >= winS && en <= now;
+    const days = ex ? diffDays(en,ex)+1 : diffDays(en,now)+1;
+    const ongoing = !t.exit;
+    return `
+      <div class="trip-row${inWin?'':' faded'}">
+        <div class="trip-info">
+          <div class="trip-name">
+            ${esc(t.label||'Schengen')}
+            ${ongoing ? `<span class="pill" style="background:#34d39918;border:1px solid #34d39944;color:#34d399">ongoing</span>` : ''}
+            ${!inWin  ? `<span class="pill" style="background:#46467a18;border:1px solid #46467a44;color:#46467a">outside window</span>` : ''}
+          </div>
+          <div class="trip-dates">${fmt(en)} → ${ex?fmt(ex):'present'}</div>
+        </div>
+        <div class="trip-days">
+          <div class="trip-days-val">${days}</div>
+          <div class="trip-days-lbl">DAYS</div>
+        </div>
+        <button class="icon-btn edit" onclick="editTrip(${t.id})">✎</button>
+        <button class="icon-btn del"  onclick="deleteTrip(${t.id})">✕</button>
+      </div>`;
+  }).join('');
+
+  // Planner weeks
+  const weeks = Array.from({length:14},(_,i)=>{
+    const d = addDays(now, i*7);
+    return {d, u: computeUsed(trips, d)};
+  });
+  document.getElementById('week-chart').innerHTML = weeks.map(({d,u},i) => {
+    const p = Math.min((u/90)*100,100);
+    const c = colMap[statusColor(u)];
+    return `
+      <div class="week-row">
+        <div class="week-lbl${i===0?' now':''}">${i===0?'today':fmtS(d)}</div>
+        <div class="week-bar">
+          <div style="position:absolute;left:${(70/90)*100}%;top:0;bottom:0;width:1px;background:rgba(251,191,36,.4)"></div>
+          <div class="week-fill" style="width:${p}%;background:${c}"></div>
+        </div>
+        <div class="week-num" style="color:${c}">${u}</div>
+        <div class="week-max">/90</div>
+      </div>`;
+  }).join('');
+}
+
+// ── FORM ─────────────────────────────────────────────────────────────────────
+let editingId = null;
+
+function showForm(trip) {
+  editingId = trip ? trip.id : null;
+  document.getElementById('form-title').textContent = trip ? 'EDIT TRIP' : 'NEW TRIP';
+  document.getElementById('f-label').value = trip ? trip.label : '';
+  document.getElementById('f-enter').value = trip ? trip.enter : '';
+  document.getElementById('f-exit').value  = trip ? (trip.exit||'') : '';
+  document.getElementById('trip-form').style.display = '';
+  document.getElementById('f-label').focus();
+}
+
+function hideForm() {
+  document.getElementById('trip-form').style.display = 'none';
+  editingId = null;
+}
+
+function editTrip(id) {
+  const t = trips.find(x=>x.id===id);
+  if (t) { showForm(t); switchTab('trips'); }
+}
+
+function deleteTrip(id) {
+  trips = trips.filter(t=>t.id!==id);
+  if (editingId===id) hideForm();
+  save(); render();
+  toast('Trip deleted');
+}
+
+document.getElementById('btn-save').addEventListener('click', () => {
+  const label = document.getElementById('f-label').value.trim();
+  const enter = document.getElementById('f-enter').value;
+  const exit  = document.getElementById('f-exit').value || null;
+  if (!enter) { toast('Entry date required', 'warn'); return; }
+  if (editingId !== null) {
+    trips = trips.map(t => t.id===editingId ? {...t,label,enter,exit} : t);
+  } else {
+    trips.push({id: nextId++, label, enter, exit});
+  }
+  save(); render(); hideForm();
+  toast(editingId!==null ? 'Trip updated' : 'Trip added');
+});
+
+document.getElementById('btn-cancel').addEventListener('click', hideForm);
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab===name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id===`panel-${name}`));
+  if (name !== 'trips') hideForm();
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchTab(t.dataset.tab));
+});
+
+document.getElementById('add-btn').addEventListener('click', () => {
+  switchTab('trips'); showForm(null);
+});
+
+// ── PLANNER ──────────────────────────────────────────────────────────────────
+document.getElementById('proj-date').addEventListener('input', function() {
+  const val = this.value;
+  const el = document.getElementById('proj-result');
+  if (!val) { el.style.display='none'; return; }
+  const pd = toDate(val);
+  if (isNaN(pd)) { el.style.display='none'; return; }
+  const u = computeUsed(trips, pd);
+  const l = Math.max(0, 90-u);
+  const clr = {'var(--red)':'#f87171','var(--amber)':'#fbbf24','var(--green)':'#34d399'}[statusColor(u)] || '#34d399';
+  el.style.display = '';
+  el.innerHTML = `
+    <div class="proj-big" style="color:${clr}">${u}</div>
+    <div class="proj-sub">${l>0?`${l} days remaining at that date`:'⚠ Limit would be exceeded'}</div>
+    ${l>0?`<div class="proj-tip" style="background:${clr}11;border:1px solid ${clr}33;color:${clr}">
+      Could stay up to <strong>${l} more days</strong> from ${fmt(pd)}<br>
+      <span style="font-size:10px;opacity:.7">(window continues rolling — recheck closer to date)</span>
+    </div>`:''}`;
+});
+
+// ── BACKUP ───────────────────────────────────────────────────────────────────
+document.getElementById('btn-export-csv').addEventListener('click', () => {
+  const sorted = trips.slice().sort((a,b)=>toDate(a.enter)-toDate(b.enter));
+  const rows = [['id','label','enter','exit']];
+  sorted.forEach(t => rows.push([t.id, t.label||'', t.enter, t.exit||'']));
+  const csv = rows.map(r => r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  download('schengen-trips.csv', csv, 'text/csv');
+  toast('CSV downloaded');
+});
+
+document.getElementById('btn-export-json').addEventListener('click', () => {
+  const data = JSON.stringify(trips, null, 2);
+  download('schengen-backup.json', data, 'application/json');
+  toast('JSON backup downloaded');
+});
+
+document.getElementById('btn-import-json').addEventListener('click', () => {
+  const raw = document.getElementById('import-area').value.trim();
+  const res = document.getElementById('import-result');
+  if (!raw) { res.innerHTML='<span class="warn">Paste JSON first</span>'; return; }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('Expected an array');
+    if (parsed.some(t=>!t.enter)) throw new Error('Each trip needs at least an enter date');
+    // normalise ids
+    trips = parsed.map((t,i)=>({id:t.id||i+1,label:t.label||'',enter:t.enter,exit:t.exit||null}));
+    nextId = Math.max(...trips.map(t=>t.id)) + 1;
+    save(); render();
+    document.getElementById('import-area').value='';
+    res.innerHTML=`<span class="success">✓ Imported ${trips.length} trips successfully</span>`;
+    toast('Import successful');
+  } catch(e) {
+    res.innerHTML=`<span class="error">✕ ${e.message}</span>`;
+  }
+});
+
+// ── PWA INSTALL ───────────────────────────────────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-btn-wrap').innerHTML = `
+    <button class="backup-btn" id="btn-install">
+      <span class="bico">📲</span>
+      <div class="btxt">
+        <div class="btitle">Install App</div>
+        <div class="bsub">Add to home screen as a standalone app</div>
+      </div>
+    </button>`;
+  document.getElementById('btn-install').addEventListener('click', () => {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(r => {
+      if (r.outcome==='accepted') toast('App installed!');
+      deferredPrompt = null;
+    });
+  });
+});
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function download(name, content, mime) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download = name;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+let toastTimer;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.className='',2200);
+}
+
+// ── SERVICE WORKER ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+load();
+render();
+</script>
+</body>
+</html>
