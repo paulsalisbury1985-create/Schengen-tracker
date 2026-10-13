@@ -1,5 +1,5 @@
-const CACHE = 'schengen-v1';
-const ASSETS = ['./index.html', './manifest.json'];
+const CACHE = 'schengen-v2';
+const ASSETS = ['./index.html', './manifest.json', './locate.js', './vendor/exifr.lite.umd.js', './data/countries-50m.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

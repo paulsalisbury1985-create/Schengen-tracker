@@ -53,9 +53,10 @@
   #header-top .today-label { margin-left: auto; font-size: 10px; color: var(--muted); }
   #header-sub { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; margin-bottom: 12px; }
   #tabs { display: flex; align-items: flex-end; justify-content: space-between; }
-  #tab-list { display: flex; gap: 2px; }
+  #tab-list { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  #tab-list::-webkit-scrollbar { display: none; }
   .tab {
-    cursor: pointer; padding: 8px 14px;
+    cursor: pointer; padding: 8px 10px; white-space: nowrap;
     font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
     color: var(--muted); border-bottom: 2px solid transparent;
     transition: all .15s; user-select: none;
@@ -63,7 +64,7 @@
   .tab:hover { color: var(--txt); }
   .tab.on { color: var(--accL); border-color: var(--acc); }
   #add-btn {
-    margin-bottom: 10px;
+    margin-bottom: 10px; margin-left: 8px; flex-shrink: 0; white-space: nowrap;
     background: var(--acc); border: none; color: #fff;
     padding: 6px 13px; border-radius: 4px; cursor: pointer;
     font-size: 10px; letter-spacing: 1.5px; font-family: inherit;
@@ -258,6 +259,35 @@
   .error   { color: var(--red); }
   .warn    { color: var(--amber); }
 
+  /* ── SCAN TAB ── */
+  #scan-progress { font-size: 11px; color: var(--accL); min-height: 16px; margin: 4px 0 10px; line-height: 1.6; }
+  .help { font-size: 11px; color: var(--txt); line-height: 1.6; margin-bottom: 8px;
+    background: var(--surf); border: 1px solid var(--b1); border-radius: 5px; padding: 10px 13px; }
+  .help summary { cursor: pointer; color: var(--accL); font-size: 11px; }
+  .help p { margin-top: 8px; }
+  .help strong { color: var(--hi); font-weight: 500; }
+  .scan-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; font-size: 11px; color: var(--muted); }
+  .scan-ctrl .field-inp { width: auto; padding: 6px 8px; }
+  .det-row {
+    background: var(--surf); border: 1px solid var(--b2); border-radius: 6px;
+    padding: 10px 13px; margin-bottom: 7px; display: flex; align-items: center; gap: 10px;
+  }
+  .det-row input[type=checkbox] { accent-color: var(--acc); width: 16px; height: 16px; flex-shrink: 0; }
+  .det-row.covered { opacity: .45; }
+  .stay-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 2px;
+    border-bottom: 1px solid var(--b1); font-size: 12px;
+  }
+  .stay-row .sc { flex: 1; color: var(--hi); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .stay-row .sd { font-size: 10px; color: var(--muted); }
+  .stay-row .sn { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--accL); min-width: 30px; text-align: right; }
+  .cbar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
+  .cbar-name { width: 110px; flex-shrink: 0; color: var(--txt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cbar { flex: 1; height: 5px; background: var(--b1); border-radius: 3px; overflow: hidden; }
+  .cbar > div { height: 100%; border-radius: 3px; }
+  .cbar-n { width: 34px; text-align: right; color: var(--hi); }
+  .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 24px; }
+
   /* ── TOAST ── */
   #toast {
     position: fixed; bottom: calc(var(--safe-bot) + 16px); left: 50%;
@@ -285,6 +315,7 @@
       <div class="tab on" data-tab="dashboard">Dashboard</div>
       <div class="tab" data-tab="trips">Trips</div>
       <div class="tab" data-tab="planner">Planner</div>
+      <div class="tab" data-tab="scan">Scan</div>
       <div class="tab" data-tab="backup">Backup</div>
     </div>
     <button id="add-btn">+ Add Trip</button>
@@ -381,6 +412,41 @@
     <div id="week-chart"></div>
   </div>
 
+  <!-- ══ SCAN ══ -->
+  <div class="panel" id="panel-scan">
+    <div class="backup-section">
+      <div class="backup-title">FIND WHERE YOU WERE</div>
+      <div class="backup-desc">Work out which country you were in on each day from your photos' GPS tags and your Google Maps Timeline. Everything is processed on this device — nothing is uploaded.</div>
+      <button class="backup-btn" id="btn-scan-photos">
+        <span class="bico">📷</span>
+        <div class="btxt"><div class="btitle">Scan photos</div><div class="bsub">JPEG · HEIC — reads the date and GPS location of each photo</div></div>
+      </button>
+      <button class="backup-btn" id="btn-scan-folder">
+        <span class="bico">📁</span>
+        <div class="btxt"><div class="btitle">Scan a folder</div><div class="bsub">Photo library or extracted Google Takeout folder (desktop)</div></div>
+      </button>
+      <button class="backup-btn" id="btn-scan-timeline">
+        <span class="bico">🗺</span>
+        <div class="btxt"><div class="btitle">Import location history</div><div class="bsub">Google Maps Timeline JSON · Takeout Records.json · GPX · KML</div></div>
+      </button>
+      <input type="file" id="in-photos" accept="image/*,.heic,.heif" multiple hidden>
+      <input type="file" id="in-folder" webkitdirectory multiple hidden>
+      <input type="file" id="in-timeline" accept=".json,.gpx,.kml,application/json" multiple hidden>
+      <div id="scan-progress"></div>
+      <details class="help">
+        <summary>How to export your Google Maps Timeline</summary>
+        <p><strong>Android:</strong> Settings → Location → Location services → Timeline → <strong>Export Timeline data</strong>. Save <em>Timeline.json</em> and import it here.</p>
+        <p><strong>iPhone:</strong> Google Maps → your profile → Settings → Personal content → <strong>Export Timeline data</strong>.</p>
+        <p><strong>Older history:</strong> takeout.google.com → <strong>Location History (Timeline)</strong>. Unzip and import <em>Records.json</em> or the files in <em>Semantic Location History</em>.</p>
+      </details>
+      <details class="help">
+        <summary>Photos say "no GPS"?</summary>
+        <p>Phones sometimes strip location when sharing photos with a web page. On <strong>Android</strong>, pick photos via <strong>Browse / Files</strong> rather than the Photos picker. On <strong>iPhone</strong>, tap <strong>Options</strong> in the picker and turn on <strong>Location</strong>, or import a Google Photos Takeout folder (its JSON files carry the location).</p>
+      </details>
+    </div>
+    <div id="scan-results"></div>
+  </div>
+
   <!-- ══ BACKUP ══ -->
   <div class="panel" id="panel-backup">
 
@@ -434,6 +500,8 @@
 
 <div id="toast"></div>
 
+<script src="vendor/exifr.lite.umd.js"></script>
+<script src="locate.js"></script>
 <script>
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const SEED = [
@@ -484,18 +552,19 @@ function fmtS(d) {
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
 }
 
+// Counts distinct days, so overlapping trips are never double counted.
 function computeUsed(tripsArr, ref) {
   const ws = addDays(ref, -179);
-  let n = 0;
+  const days = new Set();
   for (const t of tripsArr) {
     if (!t.enter) continue;
     const en = toDate(t.enter);
     const ex = t.exit ? toDate(t.exit) : ref;
     const s = en < ws  ? ws  : en;
     const e = ex > ref ? ref : ex;
-    if (e >= s) n += diffDays(s, e) + 1;
+    for (let i = diffDays(ws, s), end = diffDays(ws, e); i <= end; i++) days.add(i);
   }
-  return n;
+  return days.size;
 }
 
 function statusColor(u) {
@@ -728,6 +797,208 @@ document.getElementById('proj-date').addEventListener('input', function() {
     </div>`:''}`;
 });
 
+// ── SCAN ─────────────────────────────────────────────────────────────────────
+const LOC_KEY = 'schengen_locations_v1';
+let loc = { log: {}, fillGap: 7 };
+let scanYear = 'all';
+let scanning = false;
+
+function loadLoc() {
+  try { const raw = localStorage.getItem(LOC_KEY); if (raw) loc = { ...loc, ...JSON.parse(raw) }; } catch {}
+}
+function saveLoc() {
+  try { localStorage.setItem(LOC_KEY, JSON.stringify(loc)); }
+  catch { toast('Storage full — export a backup'); }
+}
+
+const SCAN_EXT = /\.(jpe?g|heic|heif|tiff?|png|webp|avif|dng|json|gpx|kml)$/i;
+
+async function scanFiles(fileList) {
+  if (scanning) return;
+  const files = [...fileList].filter(f => SCAN_EXT.test(f.name) || /^image\//.test(f.type));
+  const prog = document.getElementById('scan-progress');
+  if (!files.length) { prog.innerHTML = '<span class="warn">No photos or location files found</span>'; return; }
+  scanning = true;
+  const st = { photos: 0, gps: 0, nogps: 0, nodate: 0, points: 0, kinds: new Set(), unknown: 0 };
+  try {
+    prog.textContent = 'Loading country boundaries…';
+    await Locate.loadBoundaries();
+    let done = 0;
+    const next = (() => { let i = 0; return () => files[i++]; })();
+    const work = async () => {
+      for (let f; (f = next()); ) {
+        const r = await Locate.parseFile(f, window.exifr);
+        if (r.kind === 'photo') {
+          st.photos++;
+          if (r.points.length) st.gps++; else if (r.reason === 'nodate') st.nodate++; else st.nogps++;
+        } else if (r.kind) st.kinds.add(r.kind);
+        else st.unknown++;
+        if (r.points.length) st.points += Locate.addPoints(loc.log, r.points);
+        if (++done % 20 === 0 || done === files.length)
+          prog.textContent = `Scanning ${done} / ${files.length}…`;
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(6, files.length) }, work));
+    saveLoc();
+    const lines = [];
+    if (st.photos) lines.push(`📷 ${st.photos} photo${st.photos !== 1 ? 's' : ''}: ${st.gps} with location` +
+      (st.nogps ? ` · ${st.nogps} without GPS` : '') + (st.nodate ? ` · ${st.nodate} without date` : ''));
+    if (st.kinds.size) lines.push(`🗺 ${[...st.kinds].join(', ')}`);
+    if (st.unknown) lines.push(`<span class="warn">${st.unknown} file${st.unknown !== 1 ? 's' : ''} not recognised</span>`);
+    lines.push(st.points ? `<span class="success">✓ ${st.points} location fixes added</span>`
+                         : `<span class="warn">No usable locations found</span>`);
+    if (st.photos > 0 && st.gps === 0) lines.push('<span class="warn">None of the photos had GPS — see "Photos say no GPS?" below</span>');
+    prog.innerHTML = lines.join('<br>');
+    renderScan();
+  } catch (e) {
+    prog.innerHTML = `<span class="error">✕ ${esc(e.message || e)}</span>`;
+  } finally {
+    scanning = false;
+  }
+}
+
+function tripDaySet() {
+  const set = new Set(), now = today();
+  for (const t of trips) {
+    if (!t.enter) continue;
+    const en = toDate(t.enter), ex = t.exit ? toDate(t.exit) : now;
+    for (let d = new Date(en); d <= ex; d.setDate(d.getDate() + 1)) set.add(dStrLocal(d));
+  }
+  return set;
+}
+function dStrLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+let detected = [];
+
+function renderScan() {
+  const el = document.getElementById('scan-results');
+  const dates = Object.keys(loc.log);
+  if (!dates.length) { el.innerHTML = ''; return; }
+
+  const days = Locate.expandDays(loc.log, loc.fillGap);
+  const stays = Locate.stays(days);
+  const have = tripDaySet();
+  detected = Locate.schengenTrips(days).map(t => {
+    let covered = 0;
+    for (let i = 0; i < t.days; i++) if (have.has(Locate.addDay(t.enter, i))) covered++;
+    return { ...t, covered, status: covered === t.days ? 'logged' : covered ? 'overlap' : 'new' };
+  }).reverse();
+
+  const now = today();
+  const detUsed = computeUsed(detected.map(t => ({ enter: t.enter, exit: t.exit })), now);
+  const years = [...new Set(days.map(d => d.date.slice(0, 4)))].sort().reverse();
+  if (scanYear !== 'all' && !years.includes(scanYear)) scanYear = 'all';
+  const inYear = d => scanYear === 'all' || d.date.startsWith(scanYear);
+
+  const perCountry = {};
+  days.filter(inYear).forEach(d => d.countries.forEach(c => perCountry[c] = (perCountry[c] || 0) + 1));
+  const ranked = Object.entries(perCountry).sort((a, b) => b[1] - a[1]);
+  const maxN = ranked.length ? ranked[0][1] : 1;
+  const schPill = '<span class="pill" style="background:#7c6ff718;border:1px solid #7c6ff744;color:#a89cf7">schengen</span>';
+  const statusPill = {
+    new:     '<span class="pill" style="background:#34d39918;border:1px solid #34d39944;color:#34d399">new</span>',
+    overlap: '<span class="pill" style="background:#fbbf2418;border:1px solid #fbbf2444;color:#fbbf24">partly logged</span>',
+    logged:  '<span class="pill" style="background:#46467a18;border:1px solid #46467a44;color:#46467a">already logged</span>',
+  };
+
+  el.innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="stat-val">${days.length}</div><div class="stat-lbl">DAYS FOUND</div></div>
+      <div class="stat"><div class="stat-val">${Object.keys(days.reduce((o, d) => (d.countries.forEach(c => o[c] = 1), o), {})).length}</div><div class="stat-lbl">COUNTRIES</div></div>
+      <div class="stat"><div class="stat-val" style="color:${colMapS(detUsed)}">${detUsed}</div><div class="stat-lbl">SCHENGEN / 180</div></div>
+    </div>
+    <div class="scan-ctrl">
+      Assume you stayed put for gaps up to
+      <input class="field-inp" id="fill-gap" type="number" min="0" max="60" value="${loc.fillGap}" style="width:60px">
+      days when the same country is seen on both sides
+    </div>
+
+    <div class="section-lbl">DETECTED SCHENGEN TRIPS</div>
+    ${detected.length ? detected.map((t, i) => `
+      <label class="det-row${t.status === 'logged' ? ' covered' : ''}">
+        <input type="checkbox" data-det="${i}" ${t.status === 'logged' ? '' : 'checked'}>
+        <div class="trip-info">
+          <div class="trip-name">${esc(t.label)} ${statusPill[t.status]}</div>
+          <div class="trip-dates">${fmt(toDate(t.enter))} → ${fmt(toDate(t.exit))}${t.inferred ? ` · ${t.inferred}d inferred` : ''}</div>
+        </div>
+        <div class="trip-days"><div class="trip-days-val">${t.days}</div><div class="trip-days-lbl">DAYS</div></div>
+      </label>`).join('') : '<div class="backup-desc">No days in Schengen countries found.</div>'}
+    ${detected.length ? `<div class="row-btns">
+      <button class="btn-save" id="btn-add-det">ADD SELECTED TO TRIPS</button>
+      <button class="btn-cancel" id="btn-replace-det">REPLACE ALL TRIPS</button>
+    </div>` : ''}
+
+    <div class="scan-ctrl">
+      <span class="section-lbl" style="margin:0">BY COUNTRY</span>
+      <select class="field-inp" id="scan-year">
+        <option value="all">All years</option>
+        ${years.map(y => `<option value="${y}"${y === scanYear ? ' selected' : ''}>${y}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-bottom:24px">
+      ${ranked.map(([c, n]) => `
+        <div class="cbar-row">
+          <div class="cbar-name" title="${esc(c)}">${esc(c)}</div>
+          <div class="cbar"><div style="width:${n / maxN * 100}%;background:${Locate.isSchengen(c) ? 'var(--acc)' : 'var(--muted)'}"></div></div>
+          <div class="cbar-n">${n}d</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="section-lbl">COUNTRY TIMELINE</div>
+    <div style="margin-bottom:24px">
+      ${stays.filter(s => scanYear === 'all' || s.start.startsWith(scanYear) || s.end.startsWith(scanYear)).reverse().map(s => `
+        <div class="stay-row">
+          <div class="sc">${esc(s.country)} ${s.schengen ? schPill : ''}
+            <div class="sd" style="width:100%">${fmt(toDate(s.start))}${s.end !== s.start ? ' → ' + fmt(toDate(s.end)) : ''}${s.inferred ? ` · ${s.inferred}d inferred` : ''}</div>
+          </div>
+          <div class="sn">${s.days}</div>
+        </div>`).join('')}
+    </div>
+
+    <button class="backup-btn" id="btn-clear-loc">
+      <span class="bico">🗑</span>
+      <div class="btxt"><div class="btitle">Clear scanned location data</div><div class="bsub">Your trips are kept</div></div>
+    </button>`;
+
+  document.getElementById('fill-gap').addEventListener('change', e => {
+    loc.fillGap = Math.max(0, Math.min(60, parseInt(e.target.value, 10) || 0));
+    saveLoc(); renderScan();
+  });
+  document.getElementById('scan-year').addEventListener('change', e => { scanYear = e.target.value; renderScan(); });
+  document.getElementById('btn-clear-loc').addEventListener('click', () => {
+    if (!confirm('Delete all scanned location data? Your trips are kept.')) return;
+    loc.log = {}; saveLoc(); renderScan();
+    document.getElementById('scan-progress').textContent = '';
+    toast('Location data cleared');
+  });
+  const add = document.getElementById('btn-add-det');
+  if (add) add.addEventListener('click', () => {
+    const picked = [...document.querySelectorAll('[data-det]:checked')].map(c => detected[+c.dataset.det]);
+    if (!picked.length) { toast('Nothing selected'); return; }
+    picked.forEach(t => trips.push({ id: nextId++, label: t.label, enter: t.enter, exit: t.exit }));
+    save(); render(); renderScan();
+    toast(`${picked.length} trip${picked.length !== 1 ? 's' : ''} added`);
+  });
+  const repl = document.getElementById('btn-replace-det');
+  if (repl) repl.addEventListener('click', () => {
+    if (!confirm(`Replace all ${trips.length} trips with the ${detected.length} detected trips? Export a backup first if unsure.`)) return;
+    trips = detected.slice().reverse().map(t => ({ id: nextId++, label: t.label, enter: t.enter, exit: t.exit }));
+    save(); render(); renderScan();
+    toast('Trips replaced');
+  });
+}
+function colMapS(u) {
+  return {'var(--red)':'#f87171','var(--amber)':'#fbbf24','var(--green)':'#34d399'}[statusColor(u)] || '#34d399';
+}
+
+[['btn-scan-photos', 'in-photos'], ['btn-scan-folder', 'in-folder'], ['btn-scan-timeline', 'in-timeline']].forEach(([b, i]) => {
+  const inp = document.getElementById(i);
+  document.getElementById(b).addEventListener('click', () => inp.click());
+  inp.addEventListener('change', () => { scanFiles(inp.files).finally(() => { inp.value = ''; }); });
+});
+
 // ── BACKUP ───────────────────────────────────────────────────────────────────
 document.getElementById('btn-export-csv').addEventListener('click', () => {
   const sorted = trips.slice().sort((a,b)=>toDate(a.enter)-toDate(b.enter));
@@ -815,7 +1086,9 @@ if ('serviceWorker' in navigator) {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 load();
+loadLoc();
 render();
+renderScan();
 </script>
 </body>
 </html>
